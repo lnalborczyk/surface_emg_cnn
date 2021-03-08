@@ -77,7 +77,7 @@ def trigger_formatting(com_emg, com_text, tick_rate, sample_rate_emg):
     # counts number of occurrences for each element
     babar = com_emg[:, 4].tolist()
     occurrences = {i:babar.count(i) for i in np.unique(babar)}
-    print(occurrences)
+    print("Trigger occurrences before cleaning:", occurrences)
 
     # removes lines that contains zeros
     com_emg = com_emg[np.all(com_emg != 0, axis = 1)]
@@ -110,19 +110,20 @@ def trigger_formatting(com_emg, com_text, tick_rate, sample_rate_emg):
             com_emg = np.delete(com_emg, (suspect_line), axis = 0)
         else:
             print("Success!", com_emg.shape)
-        
+    
+    # counts number of occurrences for each element
+    babar = com_emg[:, 4].tolist()
+    occurrences = {i:babar.count(i) for i in np.unique(babar)}
+    print("Trigger occurrences after cleaning:", occurrences)
+    
     return(com_emg, com_relax)
     
 
 def import_trigger_values(com_emg, num_sujet):
     """
-    Imports trigger IDs from OpenSesame log file
+    Imports trigger IDs from the OpenSesame log file
     """
-
-    # specifies the subject's number
-    # num_sujet = "S_03"
-
-    # and path
+    # specifies path to file
     file = "data/" + num_sujet + "/" + num_sujet + ".csv"
 
     # reads the data in a dataframe
@@ -160,13 +161,12 @@ def assembling_trigger(data_EMG, com_emg, com_relax, emg_sr, titles_emg):
     trigger_values = np.unique(com_emg[:, 5]) # , 'stable') # extract the 60 triggers IDs (in column 6 of "com")
     trigger = np.zeros(shape = (nb_repet * item_time * int(emg_sr), len(titles_emg), len(trigger_values) ) ) # initializes trigger matrix
 
-    print("Shape of the resulting matrix is:", trigger.shape)
+    print("Shape of the resulting matrix for experimental trials is:", trigger.shape)
     
     return trigger, trigger_values
 
 
 def emg_processing(data_EMG, trigger, com_emg, trigger_values, nb_repet, titles_emg, sample_rate_emg):
-    
     """
     Process EMG data by channel (i.e., by muscle)
     """
@@ -174,47 +174,52 @@ def emg_processing(data_EMG, trigger, com_emg, trigger_values, nb_repet, titles_
     # duration of one trial (in seconds)
     item_time = 1
     
-    for i in range(0, data_EMG.shape[1]):
+    # for each channel (i.e. muscle)
+    for i in range(data_EMG.shape[1]):
 
         # removes mean EMG
         data_EMG[:, i] = data_EMG[:, i] - np.mean(data_EMG[:, i])
 
-        # band-pass filtering
+        # band-pass filtering from 20Hz to 450Hz with a fifth order filter
         data_EMG[:, i] = butter_bandpass_filter(data = data_EMG[:, i], lowcut = 20, highcut = 450, fs = sample_rate_emg, order = 5)
 
         # signal rectification
         # data_EMG[:, i] = abs(data_EMG[:, i])
 
-        # saves time of all triggers associated with the same word
-
-    # times_word = []
+    # saves time of all triggers associated with the same word
     times_word = np.zeros(shape = (len(trigger_values), nb_repet) )
 
     # concatenates nb_repet repetitions of each word
-    for i in range(0, len(trigger_values) ): # makes a loop for each trigger value (60 in total)
+    for i in range(len(trigger_values) ): # makes a loop for each trigger value (60 in total)
 
         # find all rows corresponding to the trigger (same word in same condition)
         rows_trigger = np.where(com_emg[:, 5] == trigger_values[i])[0]
-        trigger_temp = np.zeros(shape = (1000, len(titles_emg) ) )
+        
+        # test
+        # rows_trigger = np.where(com_emg[:, 5] == trigger_values[i])[0]; print(len(rows_trigger), rows_trigger); print(i); i+=1;
 
-        # for each word, in each condition
-        # 6 repetitions of each word in total
-        for j in range(0, len(rows_trigger) ):
+        # for each word, in each condition (6 repetitions of each word in total)
+        for j in range(len(rows_trigger) ):
 
             # EMG data for each word in each condition
+            trigger_temp = np.zeros(shape = (int(item_time * sample_rate_emg), len(titles_emg) ) )
             trigger_temp[:, :] = data_EMG[int(com_emg[rows_trigger[j], 2]):int(com_emg[rows_trigger[j], 2] + item_time * sample_rate_emg), :] 
 
-            # Start time of the trigger associated with the word
+            # start time of the trigger associated with the word
             times_word[i, j] = com_emg[rows_trigger[j], 2] / sample_rate_emg
 
             if "trigger_temp1" in locals():
+                # if trigger_temp1 already exists, rowbinding six seconds of each word (6 repetitions)
                 # trigger_temp1 = trigger_temp
                 # trigger_temp1 = [trigger_temp1, trigger_temp]
-                trigger_temp1 = np.row_stack([trigger_temp1, trigger_temp])
+                trigger_temp1 = np.vstack((trigger_temp1, trigger_temp) )
             else:
-                #  rowbinding six seconds of each word (6 repetitions)
+                # else, creating it
                 trigger_temp1 = trigger_temp
 
+            # removes trigger_temp
+            del(trigger_temp)
+            
             # checking shape during the j-loop
             # print(trigger_temp1.shape)
 
