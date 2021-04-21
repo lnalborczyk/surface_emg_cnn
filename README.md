@@ -1,6 +1,6 @@
 # Overt and covert speech classification from surface EMG using CNNs
 
-Reanalysing the data from [Nalborczyk et al. (2020, PLOS ONE)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0233282) using deep neural networks.
+Reanalysing the data from [Nalborczyk et al. (2020, PLOS ONE)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0233282) using deep neural networks. For tutorial purposes mostly.
 
 <!--
 
