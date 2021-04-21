@@ -3,7 +3,7 @@
 # Using 1D convolutionnal neural networks
 # -------------------------------------------------
 # Written by Ladislas Nalborczyk
-# Last updated on March 8, 2021
+# Last updated on April 21, 2021
 ##############################################
 
 # tutorials
@@ -33,8 +33,9 @@ n_ppts <- n_distinct(df$participant) %>% as.numeric
 
 # retrieves EMG signals for participant for OOI and ZYG in the overt speech condition
 x <- df %>%
-    filter(between(trigger, 1, 20) ) %>%
-    # filter(participant == "S_01") %>%
+    filter(between(trigger, 21, 40) ) %>%
+    # picking up a participant for which covert speech items are relatively distinguishable
+    filter(participant == "S_15") %>%
     select(OOI, ZYG, trigger, class, participant) %>%
     mutate(sample = rep(1:1000, length.out = nrow(.) ) ) %>%
     mutate(repetition = rep(rep(1:6, each = 1000), length.out = nrow(.) ) ) %>%
@@ -60,7 +61,8 @@ dim(x_reshaped)
 
 # train/test split
 # number of lines in training set (6 repetitions * 20 words * 18 participants)
-b <- 6 * 20 * 18
+# b <- 6 * 20 * 18
+b <- 0.8 * nrow(x_reshaped)
 # x_train <- array_reshape(x = x[1:b, ], dim = c(dim(x[1:b, ]), 1), order = "C")
 # x_test <- array_reshape(x = x[(b+1):nrow(x), ], dim = c(dim(x[(b+1):nrow(x), ]), 1), order = "C")
 x_train <- x_reshaped[1:b, , ]
@@ -69,8 +71,9 @@ print(c("x_train dimension is: ", dim(x_train), "\n", "x_test dimension is: ", d
 
 # retrieves labels (word class) in the overt speech condition
 y <- df %>%
-    filter(between(trigger, 1, 20) ) %>%
-    # filter(participant == "S_01") %>%
+    filter(between(trigger, 21, 40) ) %>%
+    # picking up a participant for which covert speech items are relatively distinguishable
+    filter(participant == "S_15") %>%
     select(OOI, trigger, class, participant) %>%
     mutate(sample = rep(1:1000, length.out = nrow(.) ) ) %>%
     mutate(repetition = rep(rep(1:6, each = 1000), length.out = nrow(.) ) ) %>%
@@ -139,7 +142,7 @@ model %>%
 history <- model %>%
     fit(
         x_train, y_train,
-        epochs = 20,
+        epochs = 50,
         batch_size = 10,
         validation_split = 0.2,
         callbacks = list(
@@ -163,7 +166,7 @@ predictions <- model %>% predict_classes(x_test)
 # confusion matrix
 table(predictions, y[(b+1):nrow(y_categ)])
 
-# saves the whole model
+# saves the entire model
 save_model_hdf5(model, "models/emg_1d_cnn_model_overt.h5")
 loaded_model <- load_model_hdf5("models/emg_1d_cnn_model_overt.h5")
 
